@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, time
 
 from app.ai.tools import TOOL_SCHEMAS, execute_tool
@@ -84,6 +85,15 @@ def _build_context(repo: Repository, child: dict, config: WakeWindowConfig, now:
     return "\n".join(lines)
 
 
+# Alguns modelos (ex.: Llama no Groq) "falam" a chamada de ferramenta como texto
+# em vez de usar o tool_calls estruturado. Removemos esses resíduos da resposta.
+_TOOL_TAG_RE = re.compile(r"<function=.*?>.*?</function>|</?function[^>]*>", re.DOTALL)
+
+
+def _clean_content(text) -> str:
+    return _TOOL_TAG_RE.sub("", text or "").strip()
+
+
 def _assistant_msg(msg) -> dict:
     """Converte a mensagem do modelo em dict reutilizável na próxima rodada."""
     out: dict = {"role": "assistant", "content": msg.content or ""}
@@ -130,7 +140,7 @@ def run_agent(
 
         tool_calls = getattr(msg, "tool_calls", None)
         if not tool_calls:
-            return (msg.content or "").strip() or "Não entendi, pode repetir? 🙂"
+            return _clean_content(msg.content) or "Não entendi, pode repetir? 🙂"
 
         for tc in tool_calls:
             args = json.loads(tc.function.arguments or "{}")

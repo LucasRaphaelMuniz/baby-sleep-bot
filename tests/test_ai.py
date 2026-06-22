@@ -135,6 +135,13 @@ def test_agent_executes_tool_then_answers():
     assert len(repo.feedings) == 1            # a ferramenta realmente registrou
 
 
+def test_clean_content_strips_leaked_tool_tags():
+    from app.ai.agent import _clean_content
+    out = _clean_content("Sim, é normal. <function=consultar_status></function>")
+    assert "function" not in out
+    assert out == "Sim, é normal."
+
+
 def test_agent_plain_answer_without_tools():
     repo = FakeRepository()
     steps = [_msg(content="Catnaps de 30–45min são normais nessa fase 🙂")]
