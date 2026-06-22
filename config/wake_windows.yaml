@@ -1,0 +1,28 @@
+# Faixas de janela de vigília por idade.
+#
+# Edite este arquivo para adaptar a outro bebê/idade SEM mexer no código.
+#   up_to_weeks: idade máxima (em semanas, inclusive) da faixa
+#   ideal / max: minutos de vigília (acordado) antes do próximo sono
+# As faixas são avaliadas de cima para baixo; use a primeira cujo
+# up_to_weeks >= idade atual do bebê.
+wake_windows:
+  - { up_to_weeks: 6,    ideal: 60,  max: 75 }
+  - { up_to_weeks: 12,   ideal: 75,  max: 90 }
+  - { up_to_weeks: 17,   ideal: 90,  max: 120 }   # ~4 meses (regressão)
+  - { up_to_weeks: 26,   ideal: 120, max: 150 }
+  - { up_to_weeks: 52,   ideal: 150, max: 210 }
+  - { up_to_weeks: 9999, ideal: 240, max: 300 }
+
+# Janela-alvo do sono noturno (bedtime).
+bedtime_window: ["19:00", "20:30"]
+
+# Antecedência do lembrete, em minutos antes do fechamento ideal da janela.
+reminder_lead_minutes: 20
+
+# Período em que lembretes de janela ficam suspensos (sono noturno).
+quiet_hours: ["20:30", "06:00"]
+
+# Rotina antes do bedtime (minutos antes do horário de dormir).
+bedtime_routine:
+  start_offset_min: 60   # começar a rotina de soninho
+  bath_offset_min: 30    # dar banho

@@ -1,0 +1,12 @@
+# Runtime
+Flask>=3.0
+gunicorn>=21.0
+supabase>=2.4
+twilio>=9.0
+litellm>=1.40
+PyYAML>=6.0
+python-dotenv>=1.0
+tzdata>=2024.1   # fusos para zoneinfo (necessário no Windows e imagens enxutas)
+
+# Dev/testes
+pytest>=8.0
