@@ -3,6 +3,7 @@ Flask>=3.0
 gunicorn>=21.0
 supabase>=2.4
 requests>=2.31
+twilio>=9.0
 litellm>=1.40
 PyYAML>=6.0
 python-dotenv>=1.0

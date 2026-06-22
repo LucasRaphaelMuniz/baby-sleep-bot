@@ -1,1 +1,1 @@
-"""Notificações proativas (lembretes de janela) e envio via Meta Cloud API."""
+"""Notificações proativas (lembretes) e envio via Meta Cloud API ou Twilio."""

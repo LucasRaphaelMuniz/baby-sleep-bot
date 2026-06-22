@@ -10,7 +10,7 @@ Você manda `1` quando o bebê dorme, `2` quando acorda, e o bot calcula a próx
 *overtired*. Também dá pra conversar em linguagem natural ("ela mamou às 15h",
 "dormiu pouco hoje?") que a IA registra e responde com base nos dados reais.
 
-> Stack: **Python · Flask · Supabase (Postgres) · Meta WhatsApp Cloud API · LiteLLM**.
+> Stack: **Python · Flask · Supabase (Postgres) · WhatsApp (Meta Cloud API _ou_ Twilio) · LiteLLM**.
 > Deploy em **Railway**. Licença **MIT**.
 
 ---
@@ -52,8 +52,11 @@ Dificuldade aceita: `fácil`, `trabalho` (ex.: "deu trabalho pra dormir").
 ### Pré-requisitos
 - Python **3.11+**
 - Conta no [Supabase](https://supabase.com) (banco Postgres grátis)
-- Conta na [Meta for Developers](https://developers.facebook.com) (número de teste
-  do WhatsApp grátis)
+- Para o WhatsApp, **um** destes (selecionável por `WHATSAPP_PROVIDER`):
+  - [Meta for Developers](https://developers.facebook.com) — número de teste grátis
+    (número próprio, mas contas novas podem cair em restrição de onboarding), **ou**
+  - [Twilio](https://www.twilio.com) — sandbox de WhatsApp grátis (mais rápido de
+    começar; o número do sandbox é compartilhado)
 - Uma chave de API de LLM — [Anthropic](https://console.anthropic.com) (padrão),
   OpenAI ou Google Gemini
 
@@ -80,8 +83,8 @@ cp .env.example .env
 Preencha o `.env`:
 - `SUPABASE_URL` / `SUPABASE_KEY` — do passo anterior.
 - `LLM_MODEL` + a chave do provedor (ex.: `ANTHROPIC_API_KEY`).
-- `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TOKEN` / `WHATSAPP_VERIFY_TOKEN` /
-  `WHATSAPP_APP_SECRET` — da Meta (ver seção do WhatsApp abaixo).
+- `WHATSAPP_PROVIDER` (`meta` ou `twilio`) + as variáveis do provedor escolhido
+  (ver seção **Conectar o WhatsApp** abaixo).
 - `TIMEZONE` (default `America/Sao_Paulo`).
 
 ### 4. Rodar local
@@ -99,12 +102,22 @@ Os testes rodam **sem** WhatsApp/Supabase/LLM (tudo é injetado/falso).
 
 ---
 
-## 📡 Conectar o WhatsApp (Meta Cloud API)
+## 📡 Conectar o WhatsApp
 
-Usamos a [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)
-da Meta — o **número de teste é gratuito** e manda para até 5 destinatários
-verificados (suficiente para uso doméstico), com número próprio (sem conflito
-com outros bots/sandboxes).
+O provedor é escolhido por `WHATSAPP_PROVIDER` (`meta` ou `twilio`). As duas
+rotas de webhook coexistem; basta apontar o painel do provedor escolhido para a
+rota correspondente:
+
+| Provedor | `WHATSAPP_PROVIDER` | Callback / webhook |
+|---|---|---|
+| Meta Cloud API | `meta`   | `…/webhook/whatsapp` |
+| Twilio (sandbox) | `twilio` | `…/webhook/twilio` |
+
+### Opção A — Meta Cloud API
+
+A [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)
+da Meta tem **número de teste gratuito** (até 5 destinatários verificados,
+suficiente para uso doméstico), com número próprio.
 
 1. Em [developers.facebook.com](https://developers.facebook.com) → **Create App**
    → tipo **Business** → adicione o produto **WhatsApp**.
@@ -125,6 +138,22 @@ com outros bots/sandboxes).
 
 > Para desenvolvimento local, exponha a porta com [ngrok](https://ngrok.com)
 > (`ngrok http 8000`) e use a URL gerada como Callback URL.
+
+### Opção B — Twilio (sandbox)
+
+Mais rápido de começar (sem aprovação de conta), mas o número do sandbox é
+**compartilhado** (`+1 415 523 8886`) e cada conta Twilio só mantém **um**
+sandbox — para rodar junto com outro bot, use uma **segunda conta Twilio** (o
+sandbox dela é independente).
+
+1. No Console do Twilio: **Messaging → Try it out → Send a WhatsApp message**.
+   Anote o **Account SID**, o **Auth Token** e o número do sandbox.
+2. No `.env` / Railway: `WHATSAPP_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`,
+   `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`.
+3. Em **Sandbox settings → "When a message comes in"**, coloque
+   `https://<seu-app>.up.railway.app/webhook/twilio` (método **POST**).
+4. Cada cuidador manda o `join <palavra-do-sandbox>` para o número e então
+   conversa normalmente (inicia o onboarding).
 
 ### ⚠️ Janela de 24h e os lembretes proativos
 O WhatsApp só permite **mensagem livre dentro de 24h** após a última mensagem do

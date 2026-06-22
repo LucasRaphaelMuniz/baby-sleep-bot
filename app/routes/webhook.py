@@ -1,10 +1,15 @@
-"""Webhook do WhatsApp (Meta Cloud API).
+"""Webhooks do WhatsApp (Meta Cloud API e Twilio).
 
+Meta:
 - `GET /webhook/whatsapp`  → verificação inicial do webhook (hub.challenge).
-- `POST /webhook/whatsapp` → recebe mensagens (JSON), processa e responde via API.
+- `POST /webhook/whatsapp` → recebe JSON, processa e responde via Graph API.
 
-A Meta entrega a mensagem em JSON e espera HTTP 200 rápido; a resposta ao
-usuário é enviada por uma chamada à Graph API (não pelo corpo da resposta).
+Twilio:
+- `POST /webhook/twilio`   → recebe form, processa e responde via TwiML.
+
+As duas rotas coexistem; o provedor ativo é definido por qual delas você aponta
+no painel (Meta ou Twilio). Apenas os lembretes proativos (cron) precisam saber
+o provedor, via `WHATSAPP_PROVIDER` (ver `notifications/sender.py`).
 """
 from __future__ import annotations
 
@@ -83,6 +88,32 @@ def incoming() -> Response:
     reply = process_message(repo, config, phone, body, now)
     send_whatsapp(phone, reply)
     return Response("ok", mimetype="text/plain")
+
+
+@bp.post("/webhook/twilio")
+def twilio_incoming() -> Response:
+    from twilio.request_validator import RequestValidator
+    from twilio.twiml.messaging_response import MessagingResponse
+
+    if os.getenv("TWILIO_VALIDATE", "true").lower() != "false":
+        token = os.getenv("TWILIO_AUTH_TOKEN")
+        if token:
+            validator = RequestValidator(token)
+            signature = request.headers.get("X-Twilio-Signature", "")
+            if not validator.validate(request.url, request.form.to_dict(), signature):
+                return Response("Invalid signature", status=403)
+
+    from_number = request.form.get("From", "")
+    body = request.form.get("Body", "")
+    repo = SupabaseRepository()
+    config = load_wake_window_config()
+    tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
+    now = datetime.now(tz)
+
+    reply = process_message(repo, config, from_number, body, now)
+    twiml = MessagingResponse()
+    twiml.message(reply)
+    return Response(str(twiml), mimetype="application/xml")
 
 
 @bp.get("/health")

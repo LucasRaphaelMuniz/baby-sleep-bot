@@ -4,7 +4,9 @@ Bot de registro e análise de sono infantil, operado por WhatsApp, com assistent
 de IA. Pensado para uso doméstico e publicação open-source (MIT).
 
 ## Stack
-- **Interface:** WhatsApp via Meta Cloud API (registro rápido + notificações proativas).
+- **Interface:** WhatsApp (registro rápido + notificações proativas). Provedor
+  selecionável por `WHATSAPP_PROVIDER`: **Meta Cloud API** ou **Twilio** — as duas
+  rotas de webhook coexistem; só os lembretes (cron) usam o seletor via `sender.py`.
   Dashboard web read-only fica para uma fase 2.
 - **Backend:** Flask + Supabase (Postgres).
 - **Deploy:** Railway.
@@ -72,7 +74,7 @@ app/
   core/        parser.py, wake_window.py, events.py   (regras puras/negócio)
   routes/      webhook.py                              (webhook /webhook/whatsapp)
   ai/          agent.py, tools.py                      (LiteLLM + tool use)
-  notifications/  meta_client.py, reminders.py
+  notifications/  meta_client.py, twilio_client.py, sender.py, reminders.py
   config.py    db.py
 migrations/    001_init.sql
 scripts/       poll_reminders.py (entrypoint do cron)
