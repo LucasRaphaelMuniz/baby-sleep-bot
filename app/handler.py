@@ -90,10 +90,18 @@ def process_message(
     cmd = parse(body)
     result = handle_command(repo, child, caregiver["id"], cmd, now, config)
     if result.to_ai:
-        # Texto livre: delega para a IA (responde dúvidas / registra por linguagem natural).
+        # Texto livre: delega para a IA (responde dúvidas / registra por linguagem
+        # natural). Se a IA falhar (sem crédito, chave inválida, indisponível), não
+        # deixamos o usuário no vácuo — respondemos algo útil e logamos o erro.
         from app.ai.agent import run_agent
 
-        return run_agent(repo, child, caregiver["id"], config, cmd.raw, now)
+        try:
+            return run_agent(repo, child, caregiver["id"], config, cmd.raw, now)
+        except Exception:
+            import logging
+
+            logging.exception("Falha ao chamar a IA")
+            return M.AI_UNAVAILABLE
     return result.message
 
 

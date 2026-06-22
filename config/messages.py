@@ -44,6 +44,12 @@ def onboarding_done(name: str, pairing_code: str) -> str:
     )
 
 
+AI_UNAVAILABLE = (
+    "🤖 Não consegui responder agora — a IA pode estar sem créditos ou "
+    "indisponível. Os comandos 1–5 seguem funcionando normalmente."
+)
+
+
 def linked(name: str) -> str:
     return (
         f"✅ Você foi vinculado(a) à {name}! Agora vocês dois compartilham os "

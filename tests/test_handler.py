@@ -149,3 +149,17 @@ def test_natural_language_routes_to_agent(monkeypatch):
     r = send(repo, LUCAS, "ela tá dormindo pouco hoje?")
     assert r == "resposta da IA 🤖"
     assert captured["text"] == "ela tá dormindo pouco hoje?"
+
+
+def test_ai_failure_returns_friendly_message(monkeypatch):
+    repo = FakeRepository()
+    _onboard(repo)
+
+    def boom(*a, **k):
+        raise RuntimeError("insufficient credits")
+
+    import app.ai.agent as agent_mod
+    monkeypatch.setattr(agent_mod, "run_agent", boom)
+
+    r = send(repo, LUCAS, "como foi o sono hoje?")
+    assert "comandos" in r.lower()      # mensagem amigável, sem crash
