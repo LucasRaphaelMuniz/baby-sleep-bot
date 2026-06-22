@@ -74,6 +74,7 @@ pip install -r requirements.txt
 2. No **SQL Editor**, rode os arquivos de migração na ordem:
    - `migrations/001_init.sql`
    - `migrations/002_onboarding.sql`
+   - `migrations/003_pairing_code.sql`
 3. Em **Project Settings → API**, copie a `URL` e a `service_role key`.
 
 ### 3. Variáveis de ambiente
@@ -134,7 +135,8 @@ suficiente para uso doméstico), com número próprio.
    - **Verify token:** o mesmo valor que você pôs em `WHATSAPP_VERIFY_TOKEN`
    - Após verificar, **Subscribe** ao campo **messages**.
 5. Mande qualquer mensagem pelo WhatsApp para o número de teste → o bot inicia o
-   **onboarding** (nome e nascimento do bebê + segundo cuidador).
+   **onboarding** (nome e nascimento do bebê). Ao final ele mostra um **código de
+   pareamento**; o segundo cuidador manda esse código para se vincular ao bebê.
 
 > Para desenvolvimento local, exponha a porta com [ngrok](https://ngrok.com)
 > (`ngrok http 8000`) e use a URL gerada como Callback URL.

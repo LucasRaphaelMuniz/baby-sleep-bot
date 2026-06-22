@@ -21,7 +21,10 @@ class Repository(Protocol):
     def create_caregiver(self, phone: str, name: Optional[str] = None) -> dict:
         ...
 
-    def create_child(self, name: str, birth_date: date, timezone: str) -> dict:
+    def create_child(
+        self, name: str, birth_date: date, timezone: str,
+        pairing_code: Optional[str] = None,
+    ) -> dict:
         ...
 
     def link_caregiver_child(self, caregiver_id: str, child_id: str) -> None:
@@ -29,6 +32,9 @@ class Repository(Protocol):
 
     def get_child_for_caregiver(self, caregiver_id: str) -> Optional[dict]:
         """Bebê associado ao cuidador (uso doméstico: um bebê por cuidador)."""
+
+    def get_child_by_pairing_code(self, code: str) -> Optional[dict]:
+        """Bebê cujo código de pareamento bate com `code`, ou None."""
 
     def get_onboarding_state(self, phone: str) -> Optional[dict]:
         ...

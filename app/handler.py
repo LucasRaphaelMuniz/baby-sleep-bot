@@ -1,14 +1,15 @@
 """Orquestrador de mensagens.
 
 Ponto único de entrada da lógica: recebe (telefone, texto) e decide entre
-conduzir o *onboarding* (primeiro uso / cadastro) ou processar um comando de
-registro. Não conhece Flask nem o provedor de WhatsApp — recebe um repositório por injeção, o
-que mantém todo o fluxo testável sem rede.
+vincular por código de pareamento, conduzir o *onboarding* (primeiro uso) ou
+processar um comando de registro. Não conhece Flask nem o provedor de WhatsApp —
+recebe um repositório por injeção, o que mantém todo o fluxo testável sem rede.
 """
 from __future__ import annotations
 
 import os
 import re
+import secrets
 from datetime import date, datetime
 from typing import Optional
 
@@ -19,7 +20,8 @@ from app.core.wake_window import WakeWindowConfig
 from app.repository import Repository
 
 _DATE_RE = re.compile(r"^\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})\s*$")
-_NEGATIVE = {"não", "nao", "n", "no", "pular", "skip", "-"}
+# Alfabeto sem caracteres ambíguos (0/O, 1/I) para o código de pareamento.
+_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def normalize_phone(raw: str) -> str:
@@ -29,8 +31,8 @@ def normalize_phone(raw: str) -> str:
     return "+" + digits if digits else ""
 
 
-def _valid_phone(phone: str) -> bool:
-    return phone.startswith("+") and len(re.sub(r"\D", "", phone)) >= 10
+def generate_pairing_code(n: int = 6) -> str:
+    return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(n))
 
 
 def parse_birth_date(text: str) -> Optional[date]:
@@ -46,6 +48,16 @@ def parse_birth_date(text: str) -> Optional[date]:
         return None
 
 
+def _match_pairing_code(repo: Repository, body: str) -> Optional[dict]:
+    """Se a mensagem contiver um código de pareamento válido, devolve o bebê."""
+    for token in (body or "").upper().split():
+        if len(token) >= 4:
+            child = repo.get_child_by_pairing_code(token)
+            if child is not None:
+                return child
+    return None
+
+
 def process_message(
     repo: Repository,
     config: WakeWindowConfig,
@@ -55,17 +67,25 @@ def process_message(
 ) -> str:
     """Processa uma mensagem recebida e devolve o texto da resposta."""
     phone = normalize_phone(phone)
-    state = repo.get_onboarding_state(phone)
     caregiver = repo.get_caregiver_by_phone(phone)
 
-    # Em onboarding (ou número desconhecido) -> fluxo de cadastro.
+    # Número desconhecido: pode estar mandando um código de pareamento.
+    if caregiver is None:
+        child = _match_pairing_code(repo, body)
+        if child is not None:
+            new_cg = repo.create_caregiver(phone)
+            repo.link_caregiver_child(new_cg["id"], child["id"])
+            repo.clear_onboarding_state(phone)
+            return M.linked(child["name"])
+
+    state = repo.get_onboarding_state(phone)
     if state is not None or caregiver is None:
-        return _onboard(repo, phone, body, state, now)
+        return _onboard(repo, phone, body)
 
     child = repo.get_child_for_caregiver(caregiver["id"])
     if child is None:
         # Cuidador sem bebê vinculado (estado inesperado): recomeça o cadastro.
-        return _onboard(repo, phone, body, None, now)
+        return _onboard(repo, phone, body)
 
     cmd = parse(body)
     result = handle_command(repo, child, caregiver["id"], cmd, now, config)
@@ -77,8 +97,9 @@ def process_message(
     return result.message
 
 
-def _onboard(repo, phone, body, state, now) -> str:
+def _onboard(repo, phone, body) -> str:
     text = (body or "").strip()
+    state = repo.get_onboarding_state(phone)
 
     if state is None:
         repo.upsert_onboarding_state(phone, step="awaiting_name")
@@ -97,25 +118,11 @@ def _onboard(repo, phone, body, state, now) -> str:
             return M.BIRTH_INVALID
         caregiver = repo.get_caregiver_by_phone(phone) or repo.create_caregiver(phone)
         tz = os.getenv("TIMEZONE", "America/Sao_Paulo")
-        child = repo.create_child(state["baby_name"], birth, tz)
+        code = generate_pairing_code()
+        child = repo.create_child(state["baby_name"], birth, tz, code)
         repo.link_caregiver_child(caregiver["id"], child["id"])
-        repo.upsert_onboarding_state(
-            phone, step="awaiting_partner",
-            baby_name=state["baby_name"], child_id=child["id"],
-        )
-        return M.ask_partner(child["name"])
-
-    if step == "awaiting_partner":
-        if text.lower() in _NEGATIVE:
-            repo.clear_onboarding_state(phone)
-            return M.onboarding_done(state["baby_name"])
-        partner = normalize_phone(text)
-        if not _valid_phone(partner):
-            return M.PARTNER_INVALID
-        existing = repo.get_caregiver_by_phone(partner) or repo.create_caregiver(partner)
-        repo.link_caregiver_child(existing["id"], state["child_id"])
         repo.clear_onboarding_state(phone)
-        return M.partner_added(partner, state["baby_name"])
+        return M.onboarding_done(child["name"], code)
 
     # Passo desconhecido: reinicia com segurança.
     repo.clear_onboarding_state(phone)

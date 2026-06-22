@@ -35,29 +35,20 @@ BIRTH_INVALID = (
 )
 
 
-def ask_partner(name: str) -> str:
+def onboarding_done(name: str, pairing_code: str) -> str:
     return (
-        f"Pronto, {name} cadastrada! ✅\n\n"
-        "Quer adicionar *outro cuidador* (ex: sua companheira)?\n"
-        "Envie o número com DDI e DDD (ex: +5511999999999) ou responda *não*."
+        f"Tudo certo com a {name}! 👶\n\n"
+        "Para adicionar *outro cuidador* (ex: sua companheira), peça pra ela "
+        "mandar este código aqui no WhatsApp:\n\n"
+        f"🔑 *{pairing_code}*\n\n" + COMMANDS_HELP
     )
 
 
-PARTNER_INVALID = (
-    "Número inválido. Envie no formato +5511999999999 ou responda *não*."
-)
-
-
-def partner_added(phone: str, name: str) -> str:
+def linked(name: str) -> str:
     return (
-        f"Cuidador {phone} adicionado à {name}! 👨‍👩‍👧\n"
-        "Quando essa pessoa mandar a primeira mensagem, já cai direto no app.\n\n"
-        + COMMANDS_HELP
+        f"✅ Você foi vinculado(a) à {name}! Agora vocês dois compartilham os "
+        "mesmos registros.\n\n" + COMMANDS_HELP
     )
-
-
-def onboarding_done(name: str) -> str:
-    return f"Tudo certo com a {name}! 👶\n\n" + COMMANDS_HELP
 
 
 # ── Lembretes proativos (cron) ───────────────────────────────────────

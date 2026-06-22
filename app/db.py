@@ -75,13 +75,25 @@ class SupabaseRepository:
         res = self.db.table("caregivers").insert({"phone": phone, "name": name}).execute()
         return res.data[0]
 
-    def create_child(self, name: str, birth_date: date, timezone: str) -> dict:
+    def create_child(self, name, birth_date, timezone, pairing_code=None) -> dict:
         res = (
             self.db.table("children")
-            .insert({"name": name, "birth_date": birth_date.isoformat(), "timezone": timezone})
+            .insert({
+                "name": name,
+                "birth_date": birth_date.isoformat(),
+                "timezone": timezone,
+                "pairing_code": pairing_code,
+            })
             .execute()
         )
         return _child_row(res.data[0])
+
+    def get_child_by_pairing_code(self, code: str) -> Optional[dict]:
+        res = (
+            self.db.table("children").select("*")
+            .eq("pairing_code", code).limit(1).execute()
+        )
+        return _child_row(res.data[0]) if res.data else None
 
     def link_caregiver_child(self, caregiver_id: str, child_id: str) -> None:
         self.db.table("caregiver_children").upsert(

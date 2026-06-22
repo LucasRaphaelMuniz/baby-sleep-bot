@@ -33,13 +33,19 @@ class FakeRepository:
         self.caregivers.append(c)
         return c
 
-    def create_child(self, name: str, birth_date: date, timezone: str) -> dict:
+    def create_child(self, name, birth_date, timezone, pairing_code=None) -> dict:
         ch = {
             "id": self._next_id("ch"), "name": name,
             "birth_date": birth_date, "timezone": timezone,
+            "pairing_code": pairing_code,
         }
         self.children.append(ch)
         return ch
+
+    def get_child_by_pairing_code(self, code: str) -> Optional[dict]:
+        return next(
+            (c for c in self.children if c.get("pairing_code") == code), None
+        )
 
     def link_caregiver_child(self, caregiver_id: str, child_id: str) -> None:
         self.links.add((caregiver_id, child_id))

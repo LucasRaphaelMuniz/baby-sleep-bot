@@ -63,9 +63,15 @@ Lembretes ficam suspensos durante `quiet_hours` **e** sempre que houver um sono
 em andamento (especialmente o noturno): janela/lembrete só existem em período de
 vigília diurna. Despertares noturnos (mamadas) não iniciam janela.
 
-## Onboarding
+## Onboarding e pareamento
 No primeiro contato de um número desconhecido, o bot pergunta nome e data de
-nascimento do bebê e grava em `children` / `caregivers`.
+nascimento do bebê e grava em `children` / `caregivers`, gerando um **código de
+pareamento** (`children.pairing_code`).
+
+Para vincular um segundo cuidador, ela manda esse código no WhatsApp — o número
+dela é capturado **exatamente como o provedor envia**, evitando problemas de
+formato/nono dígito (BR). Digitar o número do parceiro foi removido justamente
+por ser frágil. Ver `migration 003_pairing_code.sql`.
 
 ## Estrutura do repositório
 ```

@@ -40,7 +40,7 @@ def test_parse_birth_date():
 
 
 # ── onboarding ───────────────────────────────────────────────────────
-def test_onboarding_full_flow_with_partner():
+def test_onboarding_creates_child_and_pairing_code():
     repo = FakeRepository()
 
     r1 = send(repo, LUCAS, "oi")
@@ -50,30 +50,14 @@ def test_onboarding_full_flow_with_partner():
     assert "data de nascimento" in r2.lower()
 
     r3 = send(repo, LUCAS, "03/03/2026")
-    assert "outro cuidador" in r3.lower()
-    # Bebê e cuidador criados e vinculados.
+    # Bebê e cuidador criados e vinculados; onboarding encerrado.
     cg = repo.get_caregiver_by_phone("+5511988887777")
-    assert cg is not None
     child = repo.get_child_for_caregiver(cg["id"])
     assert child["name"] == "Eloá" and child["birth_date"] == date(2026, 3, 3)
-
-    r4 = send(repo, LUCAS, "+5511955554444")
-    assert "adicionado" in r4.lower()
-    # Yasmin já vinculada à mesma Eloá.
-    yas = repo.get_caregiver_by_phone("+5511955554444")
-    assert repo.get_child_for_caregiver(yas["id"])["id"] == child["id"]
-    # Onboarding encerrado.
     assert repo.get_onboarding_state("+5511988887777") is None
-
-
-def test_onboarding_decline_partner():
-    repo = FakeRepository()
-    send(repo, LUCAS, "oi")
-    send(repo, LUCAS, "Eloá")
-    send(repo, LUCAS, "03/03/2026")
-    r = send(repo, LUCAS, "não")
-    assert "Tudo certo" in r
-    assert repo.get_onboarding_state("+5511988887777") is None
+    # A mensagem final traz o código de pareamento.
+    code = child["pairing_code"]
+    assert code and code in r3
 
 
 def test_onboarding_invalid_date_reasks():
@@ -82,16 +66,45 @@ def test_onboarding_invalid_date_reasks():
     send(repo, LUCAS, "Eloá")
     r = send(repo, LUCAS, "amanhã")
     assert "formato" in r.lower()
-    # Continua no passo da data.
     assert repo.get_onboarding_state("+5511988887777")["step"] == "awaiting_birth"
 
 
-# ── multiusuário (estado compartilhado) ──────────────────────────────
+# ── pareamento do segundo cuidador ───────────────────────────────────
 def _onboard(repo):
+    """Onboarding do Lucas + vínculo da Yasmin via código de pareamento."""
     send(repo, LUCAS, "oi")
     send(repo, LUCAS, "Eloá")
     send(repo, LUCAS, "03/03/2026")
-    send(repo, LUCAS, "+5511955554444")   # adiciona Yasmin
+    code = repo.children[0]["pairing_code"]
+    send(repo, YASMIN, code)               # Yasmin manda o código
+    return code
+
+
+def test_pairing_links_second_caregiver():
+    repo = FakeRepository()
+    code = _onboard(repo)
+    yas = repo.get_caregiver_by_phone("+5511955554444")
+    child = repo.children[0]
+    # Yasmin foi vinculada ao MESMO bebê (número capturado como o provedor envia).
+    assert repo.get_child_for_caregiver(yas["id"])["id"] == child["id"]
+    assert code == child["pairing_code"]
+
+
+def test_pairing_code_is_case_insensitive():
+    repo = FakeRepository()
+    send(repo, LUCAS, "oi"); send(repo, LUCAS, "Eloá"); send(repo, LUCAS, "03/03/2026")
+    code = repo.children[0]["pairing_code"]
+    r = send(repo, YASMIN, f"vincular {code.lower()}")
+    assert "vinculado" in r.lower()
+
+
+def test_unknown_text_starts_onboarding_not_pairing():
+    repo = FakeRepository()
+    send(repo, LUCAS, "oi"); send(repo, LUCAS, "Eloá"); send(repo, LUCAS, "03/03/2026")
+    # Yasmin manda algo que não é o código -> entra no onboarding dela.
+    r = send(repo, YASMIN, "oi")
+    assert "nome" in r.lower()
+    assert repo.get_caregiver_by_phone("+5511955554444") is None
 
 
 def test_shared_state_between_caregivers():
