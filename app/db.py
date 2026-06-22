@@ -9,6 +9,11 @@ from __future__ import annotations
 import os
 from datetime import date, datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+
+def _app_tz() -> ZoneInfo:
+    return ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
 
 
 def get_client():
@@ -22,12 +27,15 @@ def get_client():
 
 
 def _dt(value) -> Optional[datetime]:
-    """Converte timestamptz (ISO string) do Supabase em datetime aware."""
+    """Converte timestamptz do Supabase (geralmente em UTC) para um datetime
+    aware no fuso configurado — assim a exibição (HH:MM) mostra a hora local."""
     if value is None:
         return None
-    if isinstance(value, datetime):
-        return value
-    return datetime.fromisoformat(value)
+    if not isinstance(value, datetime):
+        value = datetime.fromisoformat(value)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(_app_tz())
 
 
 def _row(session: Optional[dict]) -> Optional[dict]:

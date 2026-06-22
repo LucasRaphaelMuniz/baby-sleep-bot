@@ -134,6 +134,14 @@ def test_status_no_records():
     assert "Nenhum registro" in r.message
 
 
+def test_wake_response_shows_bedtime():
+    repo = FakeRepository()
+    run(repo, "1 16:00", at(16, 5))
+    r = run(repo, "2 17:30", at(17, 35))
+    assert "Bedtime sugerido" in r.message
+    assert "rotina" in r.message and "banho" in r.message
+
+
 def test_status_awake_shows_bedtime():
     repo = FakeRepository()
     run(repo, "1 12:00", at(12, 5))

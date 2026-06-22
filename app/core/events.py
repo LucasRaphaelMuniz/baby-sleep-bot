@@ -155,13 +155,16 @@ def _wake(repo, child, cmd, now, config) -> EventResult:
 
     slept = fmt_duration(minutes_awake(ev, open_session["started_at"]))
     win = compute_window(ev, child["birth_date"], config)
+    plan = bedtime_plan(ev, child["birth_date"], config)
     return EventResult(
         ok=True,
         message=(
             f"⏰ Acordou às {_hhmm(ev)} (dormiu {slept}).\n"
             f"🎯 Próximo sono ideal ~{_hhmm(win.close_ideal)} "
             f"(limite {_hhmm(win.close_max)}).\n"
-            f"🔔 Lembrete às {_hhmm(win.reminder_at)}."
+            f"🔔 Lembrete às {_hhmm(win.reminder_at)}.\n"
+            f"🌙 Bedtime sugerido ~{_hhmm(plan.bedtime)} "
+            f"(rotina {_hhmm(plan.start_routine)}, banho {_hhmm(plan.bath)})."
         ),
     )
 
