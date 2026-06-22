@@ -97,10 +97,13 @@ def process_message(
 
         try:
             return run_agent(repo, child, caregiver["id"], config, cmd.raw, now)
-        except Exception:
+        except Exception as exc:
             import logging
 
             logging.exception("Falha ao chamar a IA")
+            if os.getenv("AI_DEBUG", "").lower() == "true":
+                # Diagnóstico: mostra o erro real no WhatsApp (desligue depois).
+                return f"🤖 [debug] {type(exc).__name__}: {exc}"[:900]
             return M.AI_UNAVAILABLE
     return result.message
 
