@@ -4,7 +4,7 @@ Bot de registro e análise de sono infantil, operado por WhatsApp, com assistent
 de IA. Pensado para uso doméstico e publicação open-source (MIT).
 
 ## Stack
-- **Interface:** WhatsApp via Twilio (registro rápido + notificações proativas).
+- **Interface:** WhatsApp via Meta Cloud API (registro rápido + notificações proativas).
   Dashboard web read-only fica para uma fase 2.
 - **Backend:** Flask + Supabase (Postgres).
 - **Deploy:** Railway.
@@ -70,9 +70,9 @@ nascimento do bebê e grava em `children` / `caregivers`.
 config/        wake_windows.yaml (faixas), messages.py (textos pt-BR)
 app/
   core/        parser.py, wake_window.py, events.py   (regras puras/negócio)
-  routes/      webhook.py                              (POST /webhook/twilio)
+  routes/      webhook.py                              (webhook /webhook/whatsapp)
   ai/          agent.py, tools.py                      (LiteLLM + tool use)
-  notifications/  twilio_client.py, reminders.py
+  notifications/  meta_client.py, reminders.py
   config.py    db.py
 migrations/    001_init.sql
 scripts/       poll_reminders.py (entrypoint do cron)
@@ -80,13 +80,13 @@ tests/         test_parser.py, test_wake_window.py
 ```
 
 ## Ordem de implementação
-1. ✅ **Núcleo puro:** `parser.py` + `wake_window.py` + testes (sem Twilio/Supabase).
+1. ✅ **Núcleo puro:** `parser.py` + `wake_window.py` + testes (sem WhatsApp/Supabase).
 2. ✅ Migration `001_init.sql` + `db.py` + `events.py`.
-3. ✅ Webhook Twilio + onboarding + comandos 1–5 (`handler.py`, `routes/webhook.py`,
+3. ✅ Webhook WhatsApp (Meta) + onboarding + comandos 1–5 (`handler.py`, `routes/webhook.py`,
    `server.py`, `config/messages.py`, migration `002_onboarding.sql`).
 4. ✅ Camada IA (LiteLLM + tools): `ai/agent.py` (laço de tool use + contexto),
    `ai/tools.py` (6 ferramentas: registrar sono/acordar/mamar, status, histórico
    multi-dia via `core/history.py`, e bedtime com rotina/restrição).
 5. ✅ Lembretes (polling 2 estágios) + cron: `notifications/reminders.py`,
-   `notifications/twilio_client.py`, `scripts/poll_reminders.py`.
+   `notifications/meta_client.py`, `scripts/poll_reminders.py`.
 6. ✅ README/tutorial + `.env.example` + `.python-version`.

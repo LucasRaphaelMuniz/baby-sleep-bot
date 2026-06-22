@@ -10,7 +10,7 @@ Você manda `1` quando o bebê dorme, `2` quando acorda, e o bot calcula a próx
 *overtired*. Também dá pra conversar em linguagem natural ("ela mamou às 15h",
 "dormiu pouco hoje?") que a IA registra e responde com base nos dados reais.
 
-> Stack: **Python · Flask · Supabase (Postgres) · Twilio (WhatsApp) · LiteLLM**.
+> Stack: **Python · Flask · Supabase (Postgres) · Meta WhatsApp Cloud API · LiteLLM**.
 > Deploy em **Railway**. Licença **MIT**.
 
 ---
@@ -52,7 +52,8 @@ Dificuldade aceita: `fácil`, `trabalho` (ex.: "deu trabalho pra dormir").
 ### Pré-requisitos
 - Python **3.11+**
 - Conta no [Supabase](https://supabase.com) (banco Postgres grátis)
-- Conta no [Twilio](https://www.twilio.com) (sandbox de WhatsApp grátis)
+- Conta na [Meta for Developers](https://developers.facebook.com) (número de teste
+  do WhatsApp grátis)
 - Uma chave de API de LLM — [Anthropic](https://console.anthropic.com) (padrão),
   OpenAI ou Google Gemini
 
@@ -79,13 +80,14 @@ cp .env.example .env
 Preencha o `.env`:
 - `SUPABASE_URL` / `SUPABASE_KEY` — do passo anterior.
 - `LLM_MODEL` + a chave do provedor (ex.: `ANTHROPIC_API_KEY`).
-- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM`.
+- `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TOKEN` / `WHATSAPP_VERIFY_TOKEN` /
+  `WHATSAPP_APP_SECRET` — da Meta (ver seção do WhatsApp abaixo).
 - `TIMEZONE` (default `America/Sao_Paulo`).
 
 ### 4. Rodar local
 ```bash
-# para testar sem validar assinatura do Twilio:
-TWILIO_VALIDATE=false gunicorn wsgi:app          # ou: flask --app wsgi run
+# para testar sem validar assinatura da Meta:
+WHATSAPP_VALIDATE=false gunicorn wsgi:app        # ou: flask --app wsgi run
 ```
 Verifique a saúde do serviço: `GET http://localhost:8000/health` → `ok`.
 
@@ -93,38 +95,36 @@ Verifique a saúde do serviço: `GET http://localhost:8000/health` → `ok`.
 ```bash
 pytest
 ```
-Os testes rodam **sem** Twilio/Supabase/LLM (tudo é injetado/falso).
+Os testes rodam **sem** WhatsApp/Supabase/LLM (tudo é injetado/falso).
 
 ---
 
-## 📡 Conectar o WhatsApp (Twilio)
+## 📡 Conectar o WhatsApp (Meta Cloud API)
 
-1. No Console do Twilio: **Messaging → Try it out → Send a WhatsApp message**
-   (sandbox). Siga as instruções pra parear seu número.
-2. Em **Sandbox settings**, no campo **"When a message comes in"**, coloque a URL
-   pública do seu deploy:
-   ```
-   https://<seu-app>.up.railway.app/webhook/twilio      (método: POST)
-   ```
-3. Mande qualquer mensagem pro número do sandbox → o bot inicia o **onboarding**
-   (pergunta nome e data de nascimento do bebê e oferece adicionar o segundo
-   cuidador).
+Usamos a [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)
+da Meta — o **número de teste é gratuito** e manda para até 5 destinatários
+verificados (suficiente para uso doméstico), com número próprio (sem conflito
+com outros bots/sandboxes).
+
+1. Em [developers.facebook.com](https://developers.facebook.com) → **Create App**
+   → tipo **Business** → adicione o produto **WhatsApp**.
+2. Na seção **WhatsApp → API Setup**, anote:
+   - **Phone number ID** (do número de teste) → `WHATSAPP_PHONE_NUMBER_ID`
+   - **Access token** → `WHATSAPP_TOKEN`. O token temporário expira em 24h; para
+     produção, crie um **System User** (Business Settings) e gere um token
+     permanente.
+   - Em **App Settings → Basic**, copie o **App Secret** → `WHATSAPP_APP_SECRET`.
+3. Adicione os números dos cuidadores em **"To"** (recebem um código de
+   verificação) — esses são os destinatários autorizados do número de teste.
+4. Em **WhatsApp → Configuration → Webhook**, clique **Edit** e configure:
+   - **Callback URL:** `https://<seu-app>.up.railway.app/webhook/whatsapp`
+   - **Verify token:** o mesmo valor que você pôs em `WHATSAPP_VERIFY_TOKEN`
+   - Após verificar, **Subscribe** ao campo **messages**.
+5. Mande qualquer mensagem pelo WhatsApp para o número de teste → o bot inicia o
+   **onboarding** (nome e nascimento do bebê + segundo cuidador).
 
 > Para desenvolvimento local, exponha a porta com [ngrok](https://ngrok.com)
-> (`ngrok http 8000`) e use a URL gerada no campo acima.
-
-### ⚠️ Rodando junto com outro app no sandbox
-O **sandbox do WhatsApp é único por conta Twilio** — um número compartilhado
-(`+1 415 523 8886`), **um** webhook e **uma** lista de participantes. Ou seja,
-na mesma conta você **não** roda dois bots no sandbox ao mesmo tempo (eles
-brigam pelo mesmo número/webhook).
-
-- Para manter outro app (ex.: outro bot já existente) intocado, **crie uma
-  segunda conta Twilio** e use o sandbox dela: cada conta tem sandbox
-  independente (webhook, `join` e participantes próprios). É grátis.
-- Para um **número dedicado** de verdade (sem `join`, mensagem para qualquer
-  contato), registre um **WhatsApp Sender** de produção (Twilio + Meta Business
-  Manager + verificação do negócio). Mais setup; recomendado ao sair do teste.
+> (`ngrok http 8000`) e use a URL gerada como Callback URL.
 
 ### ⚠️ Janela de 24h e os lembretes proativos
 O WhatsApp só permite **mensagem livre dentro de 24h** após a última mensagem do
@@ -134,7 +134,7 @@ usuário. Fora disso, apenas **templates pré-aprovados**.
   a janela de 24h fica aberta e os lembretes passam normalmente.
 - O **primeiro lembrete da manhã** pode cair fora da janela se ninguém mandou
   nada nas últimas 24h — nesse caso o envio livre é **bloqueado**. Se isso virar
-  problema na prática, cadastre 1–2 **message templates** de lembrete no Twilio e
+  problema na prática, cadastre 1–2 **message templates** de lembrete na Meta e
   use-os no `scripts/poll_reminders.py` para os envios fora da janela.
 
 ---
@@ -147,7 +147,7 @@ O projeto tem **dois processos**: o webhook (web) e o cron de lembretes.
 - Crie um projeto no Railway a partir do repositório.
 - O [`Procfile`](Procfile) já define: `web: gunicorn wsgi:app --bind 0.0.0.0:$PORT`.
 - Adicione todas as variáveis do `.env` em **Variables**.
-- Use o domínio gerado para configurar o webhook do Twilio (acima).
+- Use o domínio gerado para configurar o webhook da Meta (acima).
 
 ### Cron de lembretes
 - Adicione um **Cron Job** (ou um segundo serviço) no Railway com:
@@ -190,8 +190,8 @@ Todas as respostas estão em [`config/messages.py`](config/messages.py).
 app/
   core/          parser.py, wake_window.py, events.py   (regras puras/negócio)
   ai/            agent.py, tools.py                     (LiteLLM + tool use)
-  notifications/ reminders.py, twilio_client.py         (lembretes)
-  routes/        webhook.py                             (POST /webhook/twilio)
+  notifications/ reminders.py, meta_client.py           (lembretes)
+  routes/        webhook.py                             (webhook /webhook/whatsapp)
   handler.py     orquestrador (onboarding vs comando)
   db.py          repositório Supabase
   config.py      server.py

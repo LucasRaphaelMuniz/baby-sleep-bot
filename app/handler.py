@@ -2,7 +2,7 @@
 
 Ponto único de entrada da lógica: recebe (telefone, texto) e decide entre
 conduzir o *onboarding* (primeiro uso / cadastro) ou processar um comando de
-registro. Não conhece Flask nem Twilio — recebe um repositório por injeção, o
+registro. Não conhece Flask nem o provedor de WhatsApp — recebe um repositório por injeção, o
 que mantém todo o fluxo testável sem rede.
 """
 from __future__ import annotations

@@ -1,1 +1,1 @@
-"""Blueprints HTTP (webhook do Twilio)."""
+"""Blueprints HTTP (webhook do WhatsApp / Meta Cloud API)."""

@@ -3,7 +3,7 @@
 Recebe um comando já interpretado (`parser.ParsedCommand`), o estado do bebê e
 um repositório, aplica as regras (rejeitar hora futura, "já está dormindo",
 "não há sono em andamento", desfazer) e devolve um `EventResult` com o texto a
-responder no WhatsApp. Não conhece Supabase nem Twilio.
+responder no WhatsApp. Não conhece Supabase nem o provedor de mensagens.
 """
 from __future__ import annotations
 

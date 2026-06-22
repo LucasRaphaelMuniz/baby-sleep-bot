@@ -24,7 +24,7 @@ load_dotenv()
 from app.config import load_wake_window_config  # noqa: E402
 from app.db import SupabaseRepository  # noqa: E402
 from app.notifications.reminders import run_reminder_check  # noqa: E402
-from app.notifications.twilio_client import send_whatsapp  # noqa: E402
+from app.notifications.meta_client import send_whatsapp  # noqa: E402
 
 
 def main() -> None:
