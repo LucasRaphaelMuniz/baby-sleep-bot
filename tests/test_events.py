@@ -114,7 +114,7 @@ def test_feed():
 def test_status_while_sleeping():
     repo = FakeRepository()
     run(repo, "1 13:00", at(13, 5))
-    r = run(repo, "4", at(13, 50))
+    r = run(repo, "6", at(13, 50))
     assert "está na soneca" in r.message
     assert "há 50min" in r.message
 
@@ -123,14 +123,14 @@ def test_status_while_awake_with_overtired():
     repo = FakeRepository()
     run(repo, "1 13:00", at(13, 5))
     run(repo, "2 13:30", at(13, 35))   # janela ideal fecha 15:00, máx 15:30
-    r = run(repo, "4", at(15, 45))     # já passou do limite
+    r = run(repo, "6", at(15, 45))     # já passou do limite
     assert "acordada desde 13:30" in r.message
     assert "overtired" in r.message
 
 
 def test_status_no_records():
     repo = FakeRepository()
-    r = run(repo, "4", at(14))
+    r = run(repo, "6", at(14))
     assert "Nenhum registro" in r.message
 
 
@@ -146,7 +146,7 @@ def test_status_awake_shows_bedtime():
     repo = FakeRepository()
     run(repo, "1 12:00", at(12, 5))
     run(repo, "2 13:00", at(13, 5))
-    r = run(repo, "4", at(13, 30))
+    r = run(repo, "6", at(13, 30))
     assert "Bedtime sugerido" in r.message
     assert "rotina" in r.message and "banho" in r.message
 
@@ -201,9 +201,10 @@ def test_night_status_lists_wakings():
     run(repo, "5 20:00", at(20, 5))
     run(repo, "3 23:00", at(23, 5))
     run(repo, "3 03:00", at_next(3, 5))
-    r = run(repo, "4", at_next(5))
+    r = run(repo, "6", at_next(5))
     assert "na noite desde 20:00" in r.message
-    assert "2 despertar(es): 23:00, 03:00" in r.message
+    assert "2 despertar(es)" in r.message
+    assert "23:00" in r.message and "03:00" in r.message
 
 
 def test_morning_wake_ends_night_with_summary():

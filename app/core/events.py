@@ -84,6 +84,8 @@ def handle_command(
         return _wake(repo, child, cmd, now, config)
     if cmd.type is CommandType.FEED:
         return _feed(repo, child, caregiver_id, cmd, now)
+    if cmd.type is CommandType.NIGHT_WAKING:
+        return _night_waking(repo, child, caregiver_id, cmd, now)
     if cmd.type is CommandType.STATUS:
         return _status(repo, child, now, config)
     if cmd.type is CommandType.UNDO:
@@ -171,17 +173,44 @@ def _wake(repo, child, cmd, now, config) -> EventResult:
 
 def _morning_wake(repo, child, night_session, ev, config) -> EventResult:
     night_dur = fmt_duration(minutes_awake(ev, night_session["started_at"]))
-    wakings = len(repo.get_feedings_since(child["id"], night_session["started_at"]))
+    since = night_session["started_at"]
+    feeds = len(repo.get_feedings_since(child["id"], since))
+    wakings_no_feed = len(repo.get_night_wakings_since(night_session["id"]))
+    total_wakings = feeds + wakings_no_feed
+    parts = []
+    if feeds:
+        parts.append(f"{feeds} c/ mamada")
+    if wakings_no_feed:
+        parts.append(f"{wakings_no_feed} s/ mamada")
+    waking_detail = f" ({', '.join(parts)})" if parts else ""
     win = compute_window(ev, child["birth_date"], config)
     return EventResult(
         ok=True,
         message=(
             f"☀️ Bom dia! Acordou às {_hhmm(ev)}.\n"
-            f"🌙 Noite: {night_dur}, {wakings} despertar(es) pra mamar.\n"
+            f"🌙 Noite: {night_dur}, {total_wakings} despertar(es){waking_detail}.\n"
             f"🎯 Próximo sono ideal ~{_hhmm(win.close_ideal)} "
             f"(limite {_hhmm(win.close_max)}).\n"
             f"🔔 Lembrete às {_hhmm(win.reminder_at)}."
         ),
+    )
+
+
+def _night_waking(repo, child, caregiver_id, cmd, now) -> EventResult:
+    open_session = repo.get_open_session(child["id"])
+    if not open_session or open_session["kind"] != "night":
+        return EventResult(
+            ok=False,
+            message="Só registra despertar durante o sono da noite. Mande `5` para iniciar a noite.",
+        )
+    ev = resolve_event_time(cmd.at, now)
+    if ev > now:
+        return EventResult(ok=False, message=f"⏳ {_hhmm(ev)} é no futuro. Confere o horário?")
+    repo.create_night_waking(open_session["id"], ev)
+    n = len(repo.get_night_wakings_since(open_session["id"]))
+    return EventResult(
+        ok=True,
+        message=f"🌙 Despertar às {_hhmm(ev)} ({n}º, sem mamar). Voltou a dormir 😴",
     )
 
 
@@ -208,9 +237,16 @@ def _status(repo, child, now, config) -> EventResult:
         dur = fmt_duration(minutes_awake(now, open_session["started_at"]))
         if open_session["kind"] == "night":
             feeds = repo.get_feedings_since(child["id"], open_session["started_at"])
-            line = f"{len(feeds)} despertar(es)"
-            if feeds:
-                line += ": " + ", ".join(_hhmm(f["fed_at"]) for f in feeds)
+            wakings = repo.get_night_wakings_since(open_session["id"])
+            total = len(feeds) + len(wakings)
+            line = f"{total} despertar(es)"
+            events = (
+                [(_hhmm(f["fed_at"]), "🍼") for f in feeds]
+                + [(_hhmm(w["woke_at"]), "💤") for w in wakings]
+            )
+            if events:
+                events.sort()
+                line += ": " + ", ".join(f"{t}{e}" for t, e in events)
             return EventResult(
                 ok=True,
                 message=(

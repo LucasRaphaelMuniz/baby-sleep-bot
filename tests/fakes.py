@@ -13,6 +13,7 @@ class FakeRepository:
     def __init__(self):
         self.sessions: list[dict] = []
         self.feedings: list[dict] = []
+        self.night_wakings: list[dict] = []
         self.caregivers: list[dict] = []
         self.children: list[dict] = []
         self.links: set[tuple[str, str]] = set()
@@ -123,6 +124,18 @@ class FakeRepository:
             [f for f in self.feedings
              if f["child_id"] == child_id and f["fed_at"] >= since],
             key=lambda f: f["fed_at"],
+        )
+
+    def create_night_waking(self, session_id: str, woke_at) -> dict:
+        w = {"id": self._next_id("nw"), "sleep_session_id": session_id,
+             "woke_at": woke_at, "_seq": self._seq}
+        self.night_wakings.append(w)
+        return w
+
+    def get_night_wakings_since(self, session_id: str) -> list[dict]:
+        return sorted(
+            [w for w in self.night_wakings if w["sleep_session_id"] == session_id],
+            key=lambda w: w["woke_at"],
         )
 
     # ── Desfazer ─────────────────────────────────────────────────────

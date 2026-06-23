@@ -116,7 +116,7 @@ def test_shared_state_between_caregivers():
     assert "Soneca iniciada" in r_y
 
     # Lucas pede status e vê o registro da Yasmin.
-    r_l = send(repo, LUCAS, "4", at=datetime(2026, 6, 22, 13, 50, tzinfo=TZ))
+    r_l = send(repo, LUCAS, "6", at=datetime(2026, 6, 22, 13, 50, tzinfo=TZ))
     assert "está na soneca desde 13:00" in r_l
 
     # Lucas encerra a MESMA soneca que a Yasmin abriu.
@@ -128,7 +128,7 @@ def test_yasmin_skips_onboarding():
     repo = FakeRepository()
     _onboard(repo)
     # Primeira mensagem da Yasmin já cai no fluxo normal (sem onboarding).
-    r = send(repo, YASMIN, "4", at=datetime(2026, 6, 22, 13, 0, tzinfo=TZ))
+    r = send(repo, YASMIN, "6", at=datetime(2026, 6, 22, 13, 0, tzinfo=TZ))
     assert "Nenhum registro" in r
     assert repo.get_onboarding_state("+5511955554444") is None
 

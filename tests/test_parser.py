@@ -81,7 +81,7 @@ def test_wake_feed_night():
 
 
 def test_status_ignores_extra_tokens():
-    cmd = parse("4 lixo aqui")
+    cmd = parse("6 lixo aqui")
     assert cmd.type is CommandType.STATUS
     assert cmd.at is None
 

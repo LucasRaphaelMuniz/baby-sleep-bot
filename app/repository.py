@@ -86,8 +86,13 @@ class Repository(Protocol):
         ...
 
     def get_feedings_since(self, child_id: str, since: datetime) -> list[dict]:
-        """Mamadas do bebê a partir de `since` (inclusive), em ordem
-        cronológica. Usado para contar despertares da noite."""
+        """Mamadas do bebê a partir de `since` (inclusive), em ordem cronológica."""
+
+    def create_night_waking(self, session_id: str, woke_at: datetime) -> dict:
+        """Registra um despertar noturno sem mamada."""
+
+    def get_night_wakings_since(self, session_id: str) -> list[dict]:
+        """Despertares sem mamada da sessão noturna, em ordem cronológica."""
 
     # ── Desfazer ─────────────────────────────────────────────────────
     def get_last_event(self, child_id: str) -> Optional[dict]:

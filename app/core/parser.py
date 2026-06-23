@@ -17,9 +17,10 @@ from typing import Optional
 class CommandType(Enum):
     SLEEP_START = "sleep_start"        # 1 - dormiu (soneca)
     WAKE = "wake"                      # 2 - acordou
-    FEED = "feed"                      # 3 - mamou
-    STATUS = "status"                  # 4 - status
+    FEED = "feed"                      # 3 - mamou / mamou e dormiu
+    NIGHT_WAKING = "night_waking"      # 4 - despertou e dormiu de novo (sem mamar)
     NIGHT = "night"                    # 5 - sono noturno
+    STATUS = "status"                  # 6 - status
     UNDO = "undo"                      # 0 / desfazer
     ERROR = "error"                    # ambíguo: pedir esclarecimento
     NATURAL_LANGUAGE = "natural"       # não é comando -> roteia para a IA
@@ -30,8 +31,9 @@ _COMMANDS = {
     "1": CommandType.SLEEP_START,
     "2": CommandType.WAKE,
     "3": CommandType.FEED,
-    "4": CommandType.STATUS,
+    "4": CommandType.NIGHT_WAKING,
     "5": CommandType.NIGHT,
+    "6": CommandType.STATUS,
     "0": CommandType.UNDO,
     "desfazer": CommandType.UNDO,
 }
@@ -104,7 +106,7 @@ def parse(message: str) -> ParsedCommand:
         # Qualquer outro texto livre vai para a IA.
         return ParsedCommand(CommandType.NATURAL_LANGUAGE, raw=raw)
 
-    # Comandos sem argumentos.
+    # Comandos sem argumentos (além dos opcionais de horário).
     if cmd in (CommandType.STATUS, CommandType.UNDO):
         return ParsedCommand(cmd, raw=raw)
 

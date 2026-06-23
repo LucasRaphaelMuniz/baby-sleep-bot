@@ -233,6 +233,22 @@ class SupabaseRepository:
         )
         return [{**f, "fed_at": _dt(f["fed_at"])} for f in res.data]
 
+    def create_night_waking(self, session_id: str, woke_at) -> dict:
+        res = (
+            self.db.table("night_wakings")
+            .insert({"sleep_session_id": session_id, "woke_at": woke_at.isoformat(),
+                     "reason": "comfort"})
+            .execute()
+        )
+        return res.data[0]
+
+    def get_night_wakings_since(self, session_id: str) -> list[dict]:
+        res = (
+            self.db.table("night_wakings").select("*")
+            .eq("sleep_session_id", session_id).order("woke_at").execute()
+        )
+        return [{**w, "woke_at": _dt(w["woke_at"])} for w in res.data]
+
     # ── Desfazer ─────────────────────────────────────────────────────
     def get_last_event(self, child_id: str) -> Optional[dict]:
         sess = (
