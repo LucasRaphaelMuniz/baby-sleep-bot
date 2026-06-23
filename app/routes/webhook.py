@@ -116,8 +116,10 @@ def twilio_incoming() -> Response:
     try:
         from app.notifications.twilio_client import send_whatsapp as twilio_send
         twilio_send(from_number, reply)
-    except Exception:
+    except Exception as exc:
         log.exception("Falha ao enviar resposta Twilio para %s", from_number)
+        if os.getenv("AI_DEBUG", "").lower() == "true":
+            return Response(f"[debug] {type(exc).__name__}: {exc}", status=200, mimetype="text/plain")
 
     return Response("", status=204)
 
