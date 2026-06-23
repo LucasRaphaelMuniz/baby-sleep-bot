@@ -99,22 +99,6 @@ def incoming() -> Response:
 
 @bp.post("/webhook/twilio")
 def twilio_incoming() -> Response:
-    from twilio.request_validator import RequestValidator
-    from twilio.twiml.messaging_response import MessagingResponse
-
-    # Validação de assinatura: desligada por padrão (sandbox não exige).
-    # Para ligar em produção, set TWILIO_VALIDATE=true no Railway.
-    if os.getenv("TWILIO_VALIDATE", "false").lower() == "true":
-        token = os.getenv("TWILIO_AUTH_TOKEN")
-        if token:
-            validator = RequestValidator(token)
-            signature = request.headers.get("X-Twilio-Signature", "")
-            url = request.url
-            valid = validator.validate(url, request.form.to_dict(), signature)
-            if not valid:
-                log.warning("Twilio signature mismatch — url=%s", url)
-                return Response("Invalid signature", status=403)
-
     from_number = request.form.get("From", "")
     body = request.form.get("Body", "")
 
@@ -128,9 +112,14 @@ def twilio_incoming() -> Response:
         log.exception("Erro ao processar mensagem de %s: %r", from_number, body)
         reply = "⚠️ Ocorreu um erro interno. Tente novamente em instantes."
 
-    twiml = MessagingResponse()
-    twiml.message(reply)
-    return Response(str(twiml), mimetype="application/xml")
+    # Envia via SDK (ativo) em vez de TwiML passivo — mais confiável no sandbox.
+    try:
+        from app.notifications.twilio_client import send_whatsapp as twilio_send
+        twilio_send(from_number, reply)
+    except Exception:
+        log.exception("Falha ao enviar resposta Twilio para %s", from_number)
+
+    return Response("", status=204)
 
 
 @bp.get("/health")
