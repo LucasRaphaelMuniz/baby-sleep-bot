@@ -15,6 +15,6 @@ def send_whatsapp(to: str, body: str) -> None:
         os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
     )
     to_ = to if to.startswith("whatsapp:") else f"whatsapp:{to}"
-    client.messages.create(
-        from_=os.environ["TWILIO_WHATSAPP_FROM"], to=to_, body=body
-    )
+    from_ = os.environ["TWILIO_WHATSAPP_FROM"]
+    from_ = from_ if from_.startswith("whatsapp:") else f"whatsapp:{from_}"
+    client.messages.create(from_=from_, to=to_, body=body)
