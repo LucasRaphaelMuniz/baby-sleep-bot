@@ -102,7 +102,9 @@ def twilio_incoming() -> Response:
     from twilio.request_validator import RequestValidator
     from twilio.twiml.messaging_response import MessagingResponse
 
-    if os.getenv("TWILIO_VALIDATE", "true").lower() != "false":
+    # Validação de assinatura: desligada por padrão (sandbox não exige).
+    # Para ligar em produção, set TWILIO_VALIDATE=true no Railway.
+    if os.getenv("TWILIO_VALIDATE", "false").lower() == "true":
         token = os.getenv("TWILIO_AUTH_TOKEN")
         if token:
             validator = RequestValidator(token)
