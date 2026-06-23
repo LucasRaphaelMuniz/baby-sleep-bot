@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -25,6 +26,8 @@ from app.config import load_wake_window_config
 from app.db import SupabaseRepository
 from app.handler import process_message
 from app.notifications.meta_client import send_whatsapp
+
+log = logging.getLogger(__name__)
 
 bp = Blueprint("webhook", __name__)
 
@@ -80,13 +83,17 @@ def incoming() -> Response:
         return Response("ok", mimetype="text/plain")  # status/não-texto: ignora
 
     phone, body = parsed
-    repo = SupabaseRepository()
-    config = load_wake_window_config()
-    tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
-    now = datetime.now(tz)
 
-    reply = process_message(repo, config, phone, body, now)
-    send_whatsapp(phone, reply)
+    try:
+        repo = SupabaseRepository()
+        config = load_wake_window_config()
+        tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
+        now = datetime.now(tz)
+        reply = process_message(repo, config, phone, body, now)
+        send_whatsapp(phone, reply)
+    except Exception:
+        log.exception("Erro ao processar mensagem Meta de %s: %r", phone, body)
+
     return Response("ok", mimetype="text/plain")
 
 
@@ -100,17 +107,25 @@ def twilio_incoming() -> Response:
         if token:
             validator = RequestValidator(token)
             signature = request.headers.get("X-Twilio-Signature", "")
-            if not validator.validate(request.url, request.form.to_dict(), signature):
+            url = request.url
+            valid = validator.validate(url, request.form.to_dict(), signature)
+            if not valid:
+                log.warning("Twilio signature mismatch — url=%s", url)
                 return Response("Invalid signature", status=403)
 
     from_number = request.form.get("From", "")
     body = request.form.get("Body", "")
-    repo = SupabaseRepository()
-    config = load_wake_window_config()
-    tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
-    now = datetime.now(tz)
 
-    reply = process_message(repo, config, from_number, body, now)
+    try:
+        repo = SupabaseRepository()
+        config = load_wake_window_config()
+        tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
+        now = datetime.now(tz)
+        reply = process_message(repo, config, from_number, body, now)
+    except Exception:
+        log.exception("Erro ao processar mensagem de %s: %r", from_number, body)
+        reply = "⚠️ Ocorreu um erro interno. Tente novamente em instantes."
+
     twiml = MessagingResponse()
     twiml.message(reply)
     return Response(str(twiml), mimetype="application/xml")
