@@ -64,7 +64,7 @@ Dificuldade aceita: `fácil`, `trabalho` (ex.: "deu trabalho pra dormir").
 
 ### 1. Clonar e instalar
 ```bash
-git clone https://github.com/<voce>/baby-sleep-bot.git
+git clone https://github.com/LucasRaphaelMuniz/baby-sleep-bot.git
 cd baby-sleep-bot
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
