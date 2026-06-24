@@ -97,10 +97,43 @@ def incoming() -> Response:
     return Response("ok", mimetype="text/plain")
 
 
+def _transcribe_audio(media_url: str) -> str:
+    """Baixa o áudio do Twilio e transcreve via Whisper (OpenAI)."""
+    import io
+    import requests as req
+    from openai import OpenAI
+
+    sid = os.environ["TWILIO_ACCOUNT_SID"]
+    token = os.environ["TWILIO_AUTH_TOKEN"]
+    audio = req.get(media_url, auth=(sid, token), timeout=30)
+    audio.raise_for_status()
+
+    client = OpenAI()
+    result = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=("audio.ogg", io.BytesIO(audio.content), "audio/ogg"),
+    )
+    return result.text.strip()
+
+
 @bp.post("/webhook/twilio")
 def twilio_incoming() -> Response:
     from_number = request.form.get("From", "")
     body = request.form.get("Body", "")
+
+    # Áudio: transcreve com Whisper e usa o texto como mensagem.
+    if request.form.get("NumMedia", "0") != "0":
+        media_type = request.form.get("MediaContentType0", "")
+        if "audio" in media_type:
+            media_url = request.form.get("MediaUrl0", "")
+            try:
+                body = _transcribe_audio(media_url)
+                log.info("Áudio transcrito de %s: %r", from_number, body)
+            except Exception:
+                log.exception("Falha ao transcrever áudio de %s", from_number)
+                body = ""
+        if not body:
+            return Response("", status=204)
 
     try:
         repo = SupabaseRepository()
