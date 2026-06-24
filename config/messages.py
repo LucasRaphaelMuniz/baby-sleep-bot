@@ -12,9 +12,12 @@ COMMANDS_HELP = (
     "4 — despertou e dormiu de novo (noite, sem mamar)\n"
     "5 — sono da noite\n"
     "6 — status\n"
-    "0 ou _desfazer_ — desfaz o último registro\n\n"
-    "Horário é opcional: `1 14:30` (sem horário, usa a hora atual).\n"
-    "Dúvidas? É só escrever normalmente que eu respondo. 🤖"
+    "9 ou _desfazer_ — desfaz o último registro\n"
+    "0 ou _ajuda_ — mostra este menu\n\n"
+    "💡 *Dicas*\n"
+    "• Horário é opcional: `1 14:30` (sem horário, usa a hora atual)\n"
+    "• Durante a noite: use 3 pra mamar e 4 pra despertar sem mamar\n"
+    "• Dúvidas? É só escrever normalmente que eu respondo 🤖"
 )
 
 # ── Onboarding ───────────────────────────────────────────────────────

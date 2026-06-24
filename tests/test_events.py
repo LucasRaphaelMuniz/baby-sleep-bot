@@ -170,9 +170,15 @@ def test_undo_removes_last_event():
     assert len(repo.sessions) == 1     # a soneca permanece
 
 
-def test_undo_nothing():
+def test_help_returns_menu():
     repo = FakeRepository()
     r = run(repo, "0", at(14))
+    assert "Comandos" in r.message and r.ok
+
+
+def test_undo_nothing():
+    repo = FakeRepository()
+    r = run(repo, "9", at(14))
     assert not r.ok and "Nada para desfazer" in r.message
 
 

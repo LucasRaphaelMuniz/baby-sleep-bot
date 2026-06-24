@@ -87,9 +87,10 @@ def test_status_ignores_extra_tokens():
 
 
 def test_undo_variants():
-    assert parse("0").type is CommandType.UNDO
+    assert parse("9").type is CommandType.UNDO
     assert parse("desfazer").type is CommandType.UNDO
     assert parse("DESFAZER").type is CommandType.UNDO
+    assert parse("0").type is CommandType.HELP
 
 
 # ── casos de erro / linguagem natural ────────────────────────────────

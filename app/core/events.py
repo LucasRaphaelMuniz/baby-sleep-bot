@@ -90,6 +90,9 @@ def handle_command(
         return _status(repo, child, now, config)
     if cmd.type is CommandType.UNDO:
         return _undo(repo, child)
+    if cmd.type is CommandType.HELP:
+        from config.messages import COMMANDS_HELP
+        return EventResult(ok=True, message=COMMANDS_HELP)
     return EventResult(ok=False, message="Comando não reconhecido.")
 
 
