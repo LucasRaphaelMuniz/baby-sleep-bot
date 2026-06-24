@@ -127,3 +127,30 @@ def twilio_incoming() -> Response:
 @bp.get("/health")
 def health() -> Response:
     return Response("ok", mimetype="text/plain")
+
+
+@bp.post("/cron/reminders")
+def cron_reminders() -> Response:
+    """Endpoint chamado pelo cron externo (ex.: cron-job.org) a cada 2 min.
+    Protegido por CRON_SECRET para evitar chamadas não autorizadas."""
+    secret = os.getenv("CRON_SECRET")
+    if secret and request.headers.get("X-Cron-Secret") != secret:
+        return Response("Forbidden", status=403)
+
+    try:
+        from app.config import load_wake_window_config
+        from app.db import SupabaseRepository
+        from app.notifications.reminders import run_reminder_check
+        from app.notifications.sender import send_whatsapp
+        from zoneinfo import ZoneInfo
+
+        repo = SupabaseRepository()
+        config = load_wake_window_config()
+        tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
+        now = datetime.now(tz)
+        actions = run_reminder_check(repo, config, now, send_whatsapp)
+        log.info("cron/reminders: %d aviso(s)", len(actions))
+        return Response(f"{len(actions)} aviso(s)", mimetype="text/plain")
+    except Exception:
+        log.exception("Erro no cron de lembretes")
+        return Response("error", status=500)
