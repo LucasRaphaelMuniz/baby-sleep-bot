@@ -81,7 +81,7 @@ def test_tool_historico():
     out = execute_tool(repo, ELOA, "cg1", CONFIG,
                        datetime(2026, 6, 22, 8, 0, tzinfo=TZ), "consultar_historico", {"dias": 3})
     assert "20/06" in out and "21/06" in out
-    assert "1 soneca(s) (1h)" in out
+    assert "1 soneca(s)" in out and "1h" in out
 
 
 # ── contexto injetado no prompt ──────────────────────────────────────

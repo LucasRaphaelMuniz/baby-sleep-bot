@@ -249,7 +249,8 @@ def _status(repo, child, now, config) -> EventResult:
             )
             if events:
                 events.sort()
-                line += ": " + ", ".join(f"{t}{e}" for t, e in events)
+                detail = "\n".join(f"{t}{e}" for t, e in events)
+                line += f":\n{detail}"
             return EventResult(
                 ok=True,
                 message=(
