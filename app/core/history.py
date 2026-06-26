@@ -31,13 +31,27 @@ def summarize_days(
         nights = [s for s in day_sessions if s["kind"] == "night"]
         feeds = [f for f in feedings if f["fed_at"].date() == d]
 
-        total_nap = sum(
-            int((s["ended_at"] - s["started_at"]).total_seconds() // 60) for s in naps
-        )
-        parts = [f"{len(naps)} soneca(s) ({_dur(total_nap)})"]
+        nap_details = []
+        for s in naps:
+            dur = int((s["ended_at"] - s["started_at"]).total_seconds() // 60)
+            nap_details.append(f"{s['started_at'].strftime('%H:%M')}-{s['ended_at'].strftime('%H:%M')} ({_dur(dur)})")
+        total_nap = sum(int((s["ended_at"] - s["started_at"]).total_seconds() // 60) for s in naps)
+        if nap_details:
+            parts = [f"{len(naps)} soneca(s): {', '.join(nap_details)} | total {_dur(total_nap)}"]
+        else:
+            parts = ["0 soneca(s)"]
         if nights:
-            parts.append(f"noite iniciada {nights[0]['started_at'].strftime('%H:%M')}")
-        parts.append(f"{len(feeds)} mamada(s)")
+            n = nights[0]
+            if n.get("ended_at"):
+                dur_night = int((n["ended_at"] - n["started_at"]).total_seconds() // 60)
+                parts.append(f"noite {n['started_at'].strftime('%H:%M')}-{n['ended_at'].strftime('%H:%M')} ({_dur(dur_night)})")
+            else:
+                parts.append(f"noite iniciada {n['started_at'].strftime('%H:%M')} (em andamento)")
+        feed_times = [f["fed_at"].strftime("%H:%M") for f in feeds]
+        if feed_times:
+            parts.append(f"{len(feeds)} mamada(s): {', '.join(feed_times)}")
+        else:
+            parts.append("0 mamada(s)")
         lines.append(f"{d.strftime('%d/%m (%a)')}: " + ", ".join(parts))
 
     return "\n".join(lines) if lines else "Sem dados no período."
