@@ -91,8 +91,8 @@ def handle_command(
         return _feed(repo, child, caregiver_id, cmd, now)
     if cmd.type is CommandType.NIGHT_WAKING:
         return _night_waking(repo, child, caregiver_id, cmd, now)
-    if cmd.type is CommandType.STATUS:
-        return _status(repo, child, now, config)
+    if cmd.type is CommandType.SUMMARY:
+        return _summary(repo, child, now)
     if cmd.type is CommandType.UNDO:
         return _undo(repo, child)
     if cmd.type is CommandType.HELP:
@@ -293,6 +293,46 @@ def _status(repo, child, now, config) -> EventResult:
         f"(rotina {_hhmm(plan.start_routine)}, banho {_hhmm(plan.bath)})."
     )
     return EventResult(ok=True, message=base)
+
+
+def _summary(repo, child, now) -> EventResult:
+    """Timeline dos eventos das últimas 24h em ordem cronológica."""
+    from datetime import timedelta
+    since = now - timedelta(hours=24)
+    sessions = repo.get_sessions_since(child["id"], since)
+    feedings = repo.get_feedings_since(child["id"], since)
+
+    events: list[tuple[datetime, str]] = []
+    for s in sessions:
+        label = "Noite" if s["kind"] == "night" else "Soneca"
+        events.append((s["started_at"], f"😴 Dormiu ({label})"))
+        if s.get("ended_at"):
+            day_label = "Bom dia ☀️" if s["kind"] == "night" else "Acordou"
+            events.append((s["ended_at"], day_label))
+        # despertares da sessão noturna
+        if s["kind"] == "night":
+            wakings = repo.get_night_wakings_since(s["id"])
+            for w in wakings:
+                events.append((w["woke_at"], "💤 Despertou (sem mamar)"))
+    for f in feedings:
+        events.append((f["fed_at"], "🍼 Mamou"))
+
+    if not events:
+        return EventResult(ok=True, message="Nenhum evento nas últimas 24h.")
+
+    events.sort(key=lambda x: x[0])
+    lines = [f"📋 *Resumo — últimas 24h*"]
+    for dt, label in events:
+        lines.append(f"{_hhmm(dt)} — {label}")
+
+    # indica se ainda está dormindo
+    open_session = repo.get_open_session(child["id"])
+    if open_session:
+        dur = fmt_duration(minutes_awake(now, open_session["started_at"]))
+        kind = "noite" if open_session["kind"] == "night" else "soneca"
+        lines.append(f"\n_Em {kind} há {dur}_")
+
+    return EventResult(ok=True, message="\n".join(lines))
 
 
 def _undo(repo, child) -> EventResult:

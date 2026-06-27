@@ -11,7 +11,7 @@ COMMANDS_HELP = (
     "3 — mamou / mamou e dormiu\n"
     "4 — despertou e dormiu de novo (noite, sem mamar)\n"
     "5 — sono da noite\n"
-    "6 — status\n"
+    "6 ou _resumo_ — timeline das últimas 24h\n"
     "9 ou _desfazer_ — desfaz o último registro\n"
     "0 ou _ajuda_ — mostra este menu\n\n"
     "💡 *Dicas*\n"

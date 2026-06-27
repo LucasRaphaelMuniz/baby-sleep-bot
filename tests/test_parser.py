@@ -80,9 +80,9 @@ def test_wake_feed_night():
     assert parse("5").type is CommandType.NIGHT
 
 
-def test_status_ignores_extra_tokens():
+def test_summary_ignores_extra_tokens():
     cmd = parse("6 lixo aqui")
-    assert cmd.type is CommandType.STATUS
+    assert cmd.type is CommandType.SUMMARY
     assert cmd.at is None
 
 
