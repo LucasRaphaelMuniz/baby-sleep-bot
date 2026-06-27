@@ -94,6 +94,34 @@ class Repository(Protocol):
     def get_night_wakings_since(self, session_id: str) -> list[dict]:
         """Despertares sem mamada da sessão noturna, em ordem cronológica."""
 
+    # ── Edição direta (IA) ───────────────────────────────────────────
+    def find_session_near(self, child_id: str, at: datetime, kind: Optional[str] = None) -> Optional[dict]:
+        """Sessão mais próxima do horário `at` (started_at ou ended_at), opcionalmente filtrada por kind."""
+
+    def find_feeding_near(self, child_id: str, at: datetime) -> Optional[dict]:
+        """Mamada mais próxima do horário `at`."""
+
+    def find_night_waking_near(self, session_id: str, at: datetime) -> Optional[dict]:
+        """Despertar noturno mais próximo do horário `at`."""
+
+    def update_session(self, session_id: str, **fields) -> dict:
+        """Atualiza campos de uma sessão (started_at, ended_at)."""
+
+    def update_feeding(self, feeding_id: str, fed_at: datetime) -> dict:
+        """Atualiza o horário de uma mamada."""
+
+    def update_night_waking(self, waking_id: str, woke_at: datetime) -> dict:
+        """Atualiza o horário de um despertar noturno."""
+
+    def delete_feeding(self, feeding_id: str) -> None:
+        """Remove uma mamada pelo id."""
+
+    def delete_night_waking(self, waking_id: str) -> None:
+        """Remove um despertar noturno pelo id."""
+
+    def delete_session(self, session_id: str) -> None:
+        """Remove uma sessão de sono pelo id."""
+
     # ── Desfazer ─────────────────────────────────────────────────────
     def get_last_event(self, child_id: str) -> Optional[dict]:
         """Último evento criado (sono ou mamada). Retorna dict com ao menos

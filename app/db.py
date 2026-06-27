@@ -249,6 +249,58 @@ class SupabaseRepository:
         )
         return [{**w, "woke_at": _dt(w["woke_at"])} for w in res.data]
 
+    # ── Edição direta (IA) ───────────────────────────────────────────
+    def find_session_near(self, child_id: str, at: datetime, kind=None) -> Optional[dict]:
+        q = (self.db.table("sleep_sessions").select("*")
+             .eq("child_id", child_id)
+             .gte("started_at", (at.replace(hour=0, minute=0, second=0)).isoformat())
+             .lte("started_at", (at.replace(hour=23, minute=59, second=59)).isoformat()))
+        if kind:
+            q = q.eq("kind", kind)
+        res = q.execute()
+        if not res.data:
+            return None
+        return _row(min(res.data, key=lambda s: abs((_dt(s["started_at"]) - at).total_seconds())))
+
+    def find_feeding_near(self, child_id: str, at: datetime) -> Optional[dict]:
+        res = (self.db.table("feedings").select("*")
+               .eq("child_id", child_id)
+               .gte("fed_at", at.replace(hour=0, minute=0, second=0).isoformat())
+               .lte("fed_at", at.replace(hour=23, minute=59, second=59).isoformat())
+               .execute())
+        if not res.data:
+            return None
+        return min(res.data, key=lambda f: abs((_dt(f["fed_at"]) - at).total_seconds()))
+
+    def find_night_waking_near(self, session_id: str, at: datetime) -> Optional[dict]:
+        res = (self.db.table("night_wakings").select("*")
+               .eq("sleep_session_id", session_id).execute())
+        if not res.data:
+            return None
+        return min(res.data, key=lambda w: abs((_dt(w["woke_at"]) - at).total_seconds()))
+
+    def update_session(self, session_id: str, **fields) -> dict:
+        data = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in fields.items()}
+        res = self.db.table("sleep_sessions").update(data).eq("id", session_id).execute()
+        return _row(res.data[0])
+
+    def update_feeding(self, feeding_id: str, fed_at: datetime) -> dict:
+        res = self.db.table("feedings").update({"fed_at": fed_at.isoformat()}).eq("id", feeding_id).execute()
+        return res.data[0]
+
+    def update_night_waking(self, waking_id: str, woke_at: datetime) -> dict:
+        res = self.db.table("night_wakings").update({"woke_at": woke_at.isoformat()}).eq("id", waking_id).execute()
+        return res.data[0]
+
+    def delete_feeding(self, feeding_id: str) -> None:
+        self.db.table("feedings").delete().eq("id", feeding_id).execute()
+
+    def delete_night_waking(self, waking_id: str) -> None:
+        self.db.table("night_wakings").delete().eq("id", waking_id).execute()
+
+    def delete_session(self, session_id: str) -> None:
+        self.db.table("sleep_sessions").delete().eq("id", session_id).execute()
+
     # ── Desfazer ─────────────────────────────────────────────────────
     def get_last_event(self, child_id: str) -> Optional[dict]:
         sess = (

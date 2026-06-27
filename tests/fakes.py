@@ -138,6 +138,56 @@ class FakeRepository:
             key=lambda w: w["woke_at"],
         )
 
+    # ── Edição direta (IA) ───────────────────────────────────────────
+    def find_session_near(self, child_id: str, at: datetime, kind=None):
+        rows = [s for s in self.sessions if s["child_id"] == child_id
+                and (kind is None or s["kind"] == kind)]
+        if not rows:
+            return None
+        return min(rows, key=lambda s: abs((s["started_at"] - at).total_seconds()))
+
+    def find_feeding_near(self, child_id: str, at: datetime):
+        rows = [f for f in self.feedings if f["child_id"] == child_id]
+        if not rows:
+            return None
+        return min(rows, key=lambda f: abs((f["fed_at"] - at).total_seconds()))
+
+    def find_night_waking_near(self, session_id: str, at: datetime):
+        rows = [w for w in self.night_wakings if w["sleep_session_id"] == session_id]
+        if not rows:
+            return None
+        return min(rows, key=lambda w: abs((w["woke_at"] - at).total_seconds()))
+
+    def update_session(self, session_id: str, **fields) -> dict:
+        for s in self.sessions:
+            if s["id"] == session_id:
+                s.update(fields)
+                return s
+        raise KeyError(session_id)
+
+    def update_feeding(self, feeding_id: str, fed_at: datetime) -> dict:
+        for f in self.feedings:
+            if f["id"] == feeding_id:
+                f["fed_at"] = fed_at
+                return f
+        raise KeyError(feeding_id)
+
+    def update_night_waking(self, waking_id: str, woke_at: datetime) -> dict:
+        for w in self.night_wakings:
+            if w["id"] == waking_id:
+                w["woke_at"] = woke_at
+                return w
+        raise KeyError(waking_id)
+
+    def delete_feeding(self, feeding_id: str) -> None:
+        self.feedings = [f for f in self.feedings if f["id"] != feeding_id]
+
+    def delete_night_waking(self, waking_id: str) -> None:
+        self.night_wakings = [w for w in self.night_wakings if w["id"] != waking_id]
+
+    def delete_session(self, session_id: str) -> None:
+        self.sessions = [s for s in self.sessions if s["id"] != session_id]
+
     # ── Desfazer ─────────────────────────────────────────────────────
     def get_last_event(self, child_id: str) -> Optional[dict]:
         cands = []

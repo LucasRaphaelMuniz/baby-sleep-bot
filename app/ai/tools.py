@@ -89,6 +89,62 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "apagar_evento",
+            "description": (
+                "Apaga um evento específico do banco. Use quando o usuário pedir para "
+                "remover ou apagar um registro (ex.: 'apaga a mamada das 02:00'). "
+                "Identifique o tipo e o horário e chame esta ferramenta."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["tipo", "horario"],
+                "properties": {
+                    "tipo": {
+                        "type": "string",
+                        "enum": ["soneca", "noite", "mamada", "despertar"],
+                        "description": "Tipo do evento a apagar.",
+                    },
+                    "horario": {
+                        "type": "string",
+                        "description": "Horário HH:MM do evento a apagar.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "editar_horario",
+            "description": (
+                "Corrige o horário de um evento existente. Use quando o usuário disser "
+                "'troca', 'corrige', 'muda', 'substitui' o horário de algum registro "
+                "(ex.: 'a soneca das 13h foi na verdade às 13:30')."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["tipo", "horario_atual", "horario_novo"],
+                "properties": {
+                    "tipo": {
+                        "type": "string",
+                        "enum": ["soneca_inicio", "soneca_fim", "noite_inicio", "noite_fim", "mamada", "despertar"],
+                        "description": "Qual campo do evento editar.",
+                    },
+                    "horario_atual": {
+                        "type": "string",
+                        "description": "Horário HH:MM atual do evento (para localizá-lo).",
+                    },
+                    "horario_novo": {
+                        "type": "string",
+                        "description": "Novo horário HH:MM que deve substituir o atual.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "sugerir_bedtime",
             "description": "Sugere o horário de bedtime e a rotina (início do ritual e banho). Use 'nao_antes' quando os pais tiverem uma restrição (ex.: 'só consigo após 20h').",
             "parameters": {
@@ -129,6 +185,10 @@ def execute_tool(
         cmd = ParsedCommand(CommandType.STATUS)
     elif name == "consultar_historico":
         return _historico(repo, child, now, int(args.get("dias", 3)))
+    elif name == "apagar_evento":
+        return _apagar_evento(repo, child, now, args["tipo"], args["horario"])
+    elif name == "editar_horario":
+        return _editar_horario(repo, child, now, args["tipo"], args["horario_atual"], args["horario_novo"])
     elif name == "sugerir_bedtime":
         return _bedtime(repo, child, config, now, args.get("nao_antes"))
     else:
@@ -143,6 +203,83 @@ def _historico(repo, child, now, dias) -> str:
     sessions = repo.get_sessions_since(child["id"], since)
     feedings = repo.get_feedings_since(child["id"], since)
     return summarize_days(sessions, feedings, now, dias)
+
+
+def _resolve_dt(horario: str, now: datetime) -> datetime:
+    """Converte HH:MM para datetime no mesmo dia (ou ontem se futuro)."""
+    from datetime import timedelta
+    t = parse_time(horario)
+    if t is None:
+        raise ValueError(f"Horário inválido: {horario}")
+    dt = datetime.combine(now.date(), t, tzinfo=now.tzinfo)
+    if dt > now:
+        dt -= timedelta(days=1)
+    return dt
+
+
+def _apagar_evento(repo, child, now: datetime, tipo: str, horario: str) -> str:
+    dt = _resolve_dt(horario, now)
+    open_session = repo.get_open_session(child["id"])
+
+    if tipo == "mamada":
+        ev = repo.find_feeding_near(child["id"], dt)
+        if not ev:
+            return f"Não encontrei mamada próxima de {horario}."
+        repo.delete_feeding(ev["id"])
+        return f"✅ Mamada das {horario} apagada."
+
+    if tipo == "despertar":
+        if not open_session:
+            return "Não há noite em andamento para remover despertar."
+        ev = repo.find_night_waking_near(open_session["id"], dt)
+        if not ev:
+            return f"Não encontrei despertar próximo de {horario}."
+        repo.delete_night_waking(ev["id"])
+        return f"✅ Despertar das {horario} apagado."
+
+    kind = "night" if tipo == "noite" else "nap"
+    ev = repo.find_session_near(child["id"], dt, kind=kind)
+    if not ev:
+        return f"Não encontrei {'noite' if kind == 'night' else 'soneca'} próxima de {horario}."
+    repo.delete_session(ev["id"])
+    return f"✅ {'Noite' if kind == 'night' else 'Soneca'} das {horario} apagada."
+
+
+def _editar_horario(repo, child, now: datetime, tipo: str, horario_atual: str, horario_novo: str) -> str:
+    dt_atual = _resolve_dt(horario_atual, now)
+    dt_novo = _resolve_dt(horario_novo, now)
+    open_session = repo.get_open_session(child["id"])
+
+    if tipo == "mamada":
+        ev = repo.find_feeding_near(child["id"], dt_atual)
+        if not ev:
+            return f"Não encontrei mamada próxima de {horario_atual}."
+        repo.update_feeding(ev["id"], dt_novo)
+        return f"✅ Mamada corrigida: {horario_atual} → {horario_novo}."
+
+    if tipo == "despertar":
+        if not open_session:
+            return "Não há noite em andamento."
+        ev = repo.find_night_waking_near(open_session["id"], dt_atual)
+        if not ev:
+            return f"Não encontrei despertar próximo de {horario_atual}."
+        repo.update_night_waking(ev["id"], dt_novo)
+        return f"✅ Despertar corrigido: {horario_atual} → {horario_novo}."
+
+    kind_map = {
+        "soneca_inicio": ("nap", "started_at"),
+        "soneca_fim": ("nap", "ended_at"),
+        "noite_inicio": ("night", "started_at"),
+        "noite_fim": ("night", "ended_at"),
+    }
+    if tipo not in kind_map:
+        return "Tipo não reconhecido."
+    kind, field = kind_map[tipo]
+    ev = repo.find_session_near(child["id"], dt_atual, kind=kind)
+    if not ev:
+        return f"Não encontrei sessão próxima de {horario_atual}."
+    repo.update_session(ev["id"], **{field: dt_novo})
+    return f"✅ Horário corrigido: {horario_atual} → {horario_novo}."
 
 
 def _bedtime(repo, child, config, now, nao_antes) -> str:

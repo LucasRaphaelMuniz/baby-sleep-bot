@@ -162,4 +162,4 @@ def test_agent_passes_tools_and_model(monkeypatch):
     monkeypatch.setenv("LLM_MODEL", "gemini/gemini-2.0-flash")
     run_agent(repo, ELOA, "cg1", CONFIG, "oi", at(14), completion=completion)
     assert seen["model"] == "gemini/gemini-2.0-flash"     # provedor vem do .env
-    assert len(seen["tools"]) == 6                         # ferramentas expostas
+    assert len(seen["tools"]) == 8                         # ferramentas expostas
