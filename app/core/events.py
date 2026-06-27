@@ -57,10 +57,15 @@ def fmt_duration(total_minutes: int) -> str:
 
 def resolve_event_time(at: Optional[time], now: datetime) -> datetime:
     """Combina o horário informado (HH:MM) com a data de `now`. Se `at` for
-    None, usa o próprio `now`. Mantém o fuso de `now`."""
+    None, usa o próprio `now`. Mantém o fuso de `now`.
+    Se o horário resultante for no futuro, assume ontem (ex.: 22:00 às 9h = ontem)."""
     if at is None:
         return now
-    return datetime.combine(now.date(), at, tzinfo=now.tzinfo)
+    ev = datetime.combine(now.date(), at, tzinfo=now.tzinfo)
+    if ev > now:
+        from datetime import timedelta
+        ev -= timedelta(days=1)
+    return ev
 
 
 # ── dispatcher ───────────────────────────────────────────────────────

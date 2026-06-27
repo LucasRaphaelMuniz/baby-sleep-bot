@@ -80,11 +80,12 @@ def test_wake_without_open_session_is_rejected():
     assert "Não há sono em andamento" in r.message
 
 
-def test_future_time_is_rejected():
+def test_future_time_assumes_yesterday():
+    # 1 16:00 às 14h → 16h ainda não chegou hoje → assume ontem às 16:00
     repo = FakeRepository()
-    r = run(repo, "1 16:00", at(14))   # 16h ainda não chegou
-    assert not r.ok
-    assert "futuro" in r.message
+    r = run(repo, "1 16:00", at(14))
+    assert r.ok
+    assert "16:00" in r.message
 
 
 def test_wake_before_start_is_rejected():
